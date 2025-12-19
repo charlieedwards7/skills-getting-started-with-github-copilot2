@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mergington High School Activities</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { font-family: system-ui, Arial; padding: 24px; }
+      .activity { border: 1px solid #ddd; padding: 12px; margin: 12px 0; border-radius: 6px; }
+      .activity h2 { margin: 0 0 6px 0; }
+      .message { margin-top: 8px; color: #b00; }
+      .participants ul { margin: 6px 0 0 18px; padding: 0; }
+    </style>
   </head>
   <body>
     <header>
@@ -46,5 +53,63 @@
     </footer>
 
     <script src="app.js"></script>
+    <script>
+      async function loadActivities() {
+        const res = await fetch('/activities');
+        const data = await res.json();
+        const root = document.getElementById('activities-list');
+        root.innerHTML = '';
+        for (const [name, info] of Object.entries(data)) {
+          const el = document.createElement('div');
+          el.className = 'activity';
+          el.innerHTML = `
+            <h2>${escapeHtml(name)}</h2>
+            <p>${escapeHtml(info.description)}</p>
+            <p><strong>Schedule:</strong> ${escapeHtml(info.schedule)}</p>
+            <p><strong>Max participants:</strong> ${info.max_participants}</p>
+            <div class="participants">
+              <strong>Participants (${info.participants.length}):</strong>
+              <ul>${info.participants.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+            </div>
+            <div style="margin-top:8px;">
+              <input type="email" placeholder="student email" class="email-input" />
+              <button class="signup">Sign up</button>
+            </div>
+            <div class="message" aria-live="polite"></div>
+          `;
+          root.appendChild(el);
+
+          const input = el.querySelector('.email-input');
+          const btn = el.querySelector('.signup');
+          const msg = el.querySelector('.message');
+
+          btn.addEventListener('click', async () => {
+            const email = input.value.trim();
+            msg.style.color = '#b00';
+            if (!email) { msg.textContent = 'Please enter a valid email.'; return; }
+            try {
+              const r = await fetch(`/activities/${encodeURIComponent(name)}/signup?email=${encodeURIComponent(email)}`, { method: 'POST' });
+              const body = await r.json().catch(()=>({}));
+              if (!r.ok) {
+                msg.textContent = body.detail || 'Error signing up';
+              } else {
+                msg.style.color = '#080';
+                msg.textContent = body.message || 'Signed up';
+                input.value = '';
+                await loadActivities(); // refresh list to show updated participants
+              }
+            } catch (e) {
+              msg.textContent = 'Network error';
+            }
+          });
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+      }
+
+      loadActivities();
+    </script>
   </body>
 </html>
