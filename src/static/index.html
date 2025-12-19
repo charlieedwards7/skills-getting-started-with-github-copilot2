@@ -11,6 +11,9 @@
       .activity h2 { margin: 0 0 6px 0; }
       .message { margin-top: 8px; color: #b00; }
       .participants ul { margin: 6px 0 0 18px; padding: 0; }
+      .hidden { display: none; }
+      #message.success { color: #080; }
+      #message.error { color: #b00; }
     </style>
   </head>
   <body>
@@ -44,7 +47,7 @@
           </div>
           <button type="submit">Sign Up</button>
         </form>
-        <div id="message" class="hidden"></div>
+        <div id="message" class="hidden" role="status" aria-live="polite"></div>
       </section>
     </main>
 
@@ -52,14 +55,21 @@
       <p>&copy; 2023 Mergington High School</p>
     </footer>
 
-    <script src="app.js"></script>
     <script>
       async function loadActivities() {
         const res = await fetch('/activities');
+        if (!res.ok) {
+          document.getElementById('activities-list').innerHTML = '<p>Error loading activities</p>';
+          return {};
+        }
         const data = await res.json();
         const root = document.getElementById('activities-list');
         root.innerHTML = '';
+        const select = document.getElementById('activity');
+        select.innerHTML = '<option value="">-- Select an activity --</option>';
+
         for (const [name, info] of Object.entries(data)) {
+          // populate the activities list (shows participants)
           const el = document.createElement('div');
           el.className = 'activity';
           el.innerHTML = `
@@ -79,6 +89,13 @@
           `;
           root.appendChild(el);
 
+          // also add the activity to the signup drop-down
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          select.appendChild(opt);
+
+          // keep per-card quick signup working and refresh the whole list on success
           const input = el.querySelector('.email-input');
           const btn = el.querySelector('.signup');
           const msg = el.querySelector('.message');
@@ -103,12 +120,49 @@
             }
           });
         }
+        return data;
       }
 
+      // helper used by both list and form
       function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
       }
 
+      // Handle the top-level signup form (select + email)
+      document.getElementById('signup-form').addEventListener('submit', async function (ev) {
+        ev.preventDefault();
+        const messageEl = document.getElementById('message');
+        messageEl.className = '';
+        const email = document.getElementById('email').value.trim();
+        const activity = document.getElementById('activity').value;
+        if (!email || !activity) {
+          messageEl.className = 'error';
+          messageEl.textContent = 'Please provide an email and select an activity.';
+          messageEl.classList.remove('hidden');
+          return;
+        }
+        try {
+          const r = await fetch(`/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`, { method: 'POST' });
+          const body = await r.json().catch(()=>({}));
+          if (!r.ok) {
+            messageEl.className = 'error';
+            messageEl.textContent = body.detail || 'Error signing up';
+          } else {
+            messageEl.className = 'success';
+            messageEl.textContent = body.message || 'Signed up';
+            document.getElementById('email').value = '';
+            document.getElementById('activity').value = '';
+            await loadActivities();
+          }
+        } catch (e) {
+          messageEl.className = 'error';
+          messageEl.textContent = 'Network error';
+        } finally {
+          messageEl.classList.remove('hidden');
+        }
+      });
+
+      // initial load
       loadActivities();
     </script>
   </body>
