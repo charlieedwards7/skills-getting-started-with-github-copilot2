@@ -142,3 +142,26 @@ footer {
   padding: 20px;
   color: #666;
 }
+
+/* Participants list styling - pleasant bulleted list with subtle chips */
+.participant-title {
+  margin-top: 12px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #1a237e;
+}
+
+.participant-list {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.participant-list li {
+  background-color: #f1f8ff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #153e75;
+}
