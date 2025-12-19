@@ -79,7 +79,7 @@
             <p><strong>Max participants:</strong> ${info.max_participants}</p>
             <div class="participants">
               <strong>Participants (${info.participants.length}):</strong>
-              <ul>${info.participants.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>
+              <ul class="participant-list">${info.participants.map(p => `<li><span class="participant-email">${escapeHtml(p)}</span> <button class="participant-delete" data-email="${escapeHtml(p)}" data-activity="${escapeHtml(name)}" aria-label="Unregister ${escapeHtml(p)}">✖</button></li>`).join('')}</ul>
             </div>
             <div style="margin-top:8px;">
               <input type="email" placeholder="student email" class="email-input" />
@@ -118,6 +118,29 @@
             } catch (e) {
               msg.textContent = 'Network error';
             }
+          });
+
+          // attach delete handler to participant delete buttons in this card
+          el.querySelectorAll('.participant-delete').forEach(db => {
+            db.addEventListener('click', async () => {
+              const email = db.dataset.email;
+              const activityName = db.dataset.activity;
+              try {
+                const r = await fetch(`/activities/${encodeURIComponent(activityName)}/participants?email=${encodeURIComponent(email)}`, { method: 'DELETE' });
+                const body = await r.json().catch(()=>({}));
+                if (!r.ok) {
+                  msg.style.color = '#b00';
+                  msg.textContent = body.detail || 'Error removing participant';
+                } else {
+                  msg.style.color = '#080';
+                  msg.textContent = body.message || 'Participant removed';
+                  await loadActivities();
+                }
+              } catch (e) {
+                msg.style.color = '#b00';
+                msg.textContent = 'Network error';
+              }
+            });
           });
         }
         return data;
